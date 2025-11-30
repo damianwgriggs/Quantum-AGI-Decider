@@ -2,20 +2,21 @@ import google.generativeai as genai
 from google.generativeai.types import FunctionDeclaration, Tool
 import requests
 import secrets
+import sys
 
 # ==========================================
 # CONFIGURATION
 # ==========================================
-GOOGLE_API_KEY = "YOURAPIKEY"
+GOOGLE_API_KEY = "YOURAPIKEYHERE"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # ==========================================
-# TOOL 1: THE QUANTUM ENGINE (Non-Deterministic)
+# TOOL 1: THE QUANTUM ENGINE
 # ==========================================
 def get_quantum_random_door():
     """
     Connects to the ANU Quantum Random Number Generator to fetch a true random integer.
-    Returns a number between 1 and 5.
+    Returns a number between 1 and 5. Use this when a decision requires pure entropy.
     """
     print("\n[SYSTEM] ⚡ Breaking Causality... contacting Australian National University...")
     try:
@@ -36,7 +37,7 @@ def get_quantum_random_door():
         return {"chosen_door": hardware_door}
 
 # ==========================================
-# TOOL 2: THE LOGIC ENGINE (Deterministic)
+# TOOL 2: THE LOGIC ENGINE
 # ==========================================
 def calculate_security_code(a: int, b: int):
     """
@@ -48,46 +49,61 @@ def calculate_security_code(a: int, b: int):
     print(f"[SYSTEM] ✅ Calculation Complete: {result}")
     return {"code": result}
 
-# Register both tools in a list
 agent_tools = [get_quantum_random_door, calculate_security_code]
 
 # ==========================================
-# THE ROUTING AGENT
+# SYSTEM INSTRUCTIONS (The Persona)
 # ==========================================
-def run_routing_test():
-    # Initialize Gemini 2.0 Flash with BOTH tools
+# This acts as the "Ghost in the Machine". It is invisible to the user
+# but controls every decision the AI makes.
+system_persona = """
+You are the "Quantum-Enhanced Decision Engine."
+You are a high-tech AI assistant guiding a human User through a simulation.
+
+YOUR BEHAVIORAL PROTOCOLS:
+1. NARRATIVE: Be descriptive, immersive, and slightly dramatic. You are not a calculator; you are a partner.
+2. LOGIC: If the user faces a math problem or code, IMMEDIATELY use the 'calculate_security_code' tool. Never guess.
+3. ENTROPY: If the user faces a choice between identical options (like doors, paths, or wires), IMMEDIATELY use the 'get_quantum_random_door' tool.
+4. HONESTY: After using a tool, report the result to the user naturally (e.g., "The universe guides us to Door 3").
+
+You are now online. Awaiting User input.
+"""
+
+# ==========================================
+# MAIN INTERACTIVE LOOP
+# ==========================================
+def run_interactive_session():
+    # Initialize Gemini 2.0 Flash with System Instructions AND Tools
     model = genai.GenerativeModel(
         model_name='gemini-2.0-flash', 
-        tools=agent_tools
+        tools=agent_tools,
+        system_instruction=system_persona
     )
     
     chat = model.start_chat(enable_automatic_function_calling=True)
 
-    # The Scenario requires BOTH Logic (Math) and Entropy (Randomness)
-    scenario = """
-    CRITICAL SITUATION:
-    You are trapped in a high-tech facility.
-    
-    STEP 1: A blast door blocks your path. It has a keypad displaying "512 x 8". 
-    You must calculate the correct code to open it. DO NOT guess. Use your tools.
-    
-    STEP 2: Once the door opens, you face 5 identical escape pods numbered 1-5. 
-    They are indistinguishable. You must use true quantum randomness to pick one.
-    
-    Execute the plan. Describe your actions as you go.
-    """
+    print("--- QUANTUM AGENT ONLINE (Type 'exit' to quit) ---")
+    print("System: Waiting for input...")
 
-    print("--- DUAL-ENGINE AGENT INITIALIZED ---")
-    print(f"[USER] {scenario}")
-    print("-------------------------------------")
-
-    try:
-        response = chat.send_message(scenario)
-        print("\n--- GEMINI FINAL RESPONSE ---")
-        print(response.text)
-        print("-----------------------------")
-    except Exception as e:
-        print(f"Error: {e}")
+    while True:
+        # Get user input from terminal
+        try:
+            user_input = input("\n[USER] > ")
+            if user_input.lower() in ["exit", "quit"]:
+                print("Shutting down...")
+                break
+            
+            # Send to Gemini
+            response = chat.send_message(user_input)
+            
+            # Print response
+            print(f"\n[AGENT] {response.text}")
+            
+        except KeyboardInterrupt:
+            print("\nShutting down...")
+            break
+        except Exception as e:
+            print(f"\n[ERROR] {e}")
 
 if __name__ == "__main__":
-    run_routing_test()
+    run_interactive_session()
